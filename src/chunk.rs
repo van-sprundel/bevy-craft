@@ -15,11 +15,12 @@ impl ChunkGrid {
         let x = chunk.x as isize;
         let y = chunk.y as isize;
         let z = chunk.z as isize;
-        let index = Self::chunk_coords_to_index(x, y, z) as usize + (CHUNK_SIZE / 2);
+        let index = Self::chunk_coords_to_index(x, y, z);
         info!("setting chunk at xyz: {}{}{} i: {}",x,y,z,index);
         self.0[index] = Some(chunk);
     }
     pub fn chunk_index_to_coords(index: usize) -> (usize, usize, usize) {
+        let index = index - (CHUNK_SIZE / 2);
         let x = (index % 32) * 32; // 0..32 then resets to 0
         let y = (index / (32 * 32)) * 32; // 0..1 is equal to a 32 * 32 block area
         let z = ((index / 32) % 32) * 32;
@@ -27,13 +28,12 @@ impl ChunkGrid {
         // info!("chunk index to coords: {} {:?}",index,(x,y,z));
         (x, y, z)
     }
-    pub fn chunk_coords_to_index(x: isize, y: isize, z: isize) -> isize {
+    pub fn chunk_coords_to_index(x: isize, y: isize, z: isize) -> usize {
         let x1 = x; // incremental is the same
         let y1 = y * 32 * 32; // incremental is 1:32*32
         let z1 = z * 32;         // incremental is 1:32
-        let i = x1 + y1 + z1;
         // info!("chunk coord to index: {:?} {}",(x,y,z),i);
-        i.into()
+        ((x1 + y1 + z1) + (CHUNK_SIZE / 2) as isize) as usize
     }
     pub fn get_faces(&self, c_x: isize, c_y: isize, c_z: isize, b_x: usize, b_y: usize, b_z: usize) -> [bool; 6] {
         let top = {
@@ -42,11 +42,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                if *c.get_block(b_x, b_y, b_z) != None {
-                    false
-                } else {
-                    true
-                }
+                !(*c.get_block(b_x, b_y, b_z) != None)
             } else {
                 true
             }
@@ -57,11 +53,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                if *c.get_block(b_x, b_y, b_z) != None {
-                    false
-                } else {
-                    true
-                }
+                !(*c.get_block(b_x, b_y, b_z) != None)
             } else {
                 true
             }
@@ -72,11 +64,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                if *c.get_block(b_x, b_y, b_z) != None {
-                    false
-                } else {
-                    true
-                }
+                !(*c.get_block(b_x, b_y, b_z) != None)
             } else {
                 true
             }
@@ -87,11 +75,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                if *c.get_block(b_x, b_y, b_z) != None {
-                    false
-                } else {
-                    true
-                }
+                !(*c.get_block(b_x, b_y, b_z) != None)
             } else {
                 true
             }
@@ -102,11 +86,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                if *c.get_block(b_x, b_y, b_z) != None {
-                    false
-                } else {
-                    true
-                }
+                !(*c.get_block(b_x, b_y, b_z) != None)
             } else {
                 true
             }
@@ -117,11 +97,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                if *c.get_block(b_x, b_y, b_z) != None {
-                    false
-                } else {
-                    true
-                }
+                !(*c.get_block(b_x, b_y, b_z) != None)
             } else {
                 true
             }
@@ -134,7 +110,7 @@ impl ChunkGrid {
         let mut uvs = Vec::with_capacity(32 * 32 * 32); //max
         let mut indices = Vec::with_capacity(32 * 32 * 32);
         info!("generating mesh with xyz: {} {} {}",chunk_x,chunk_y,chunk_z);
-        if let Some(chunk) = &self.get_chunk_from_coords(chunk_x, chunk_y, chunk_z) {
+        if let Some(chunk) = self.get_chunk_from_coords(chunk_x, chunk_y, chunk_z) {
             chunk.blocks.iter().enumerate().for_each(|(i, b)| {
                 match b {
                     None => {}
@@ -191,7 +167,7 @@ impl ChunkGrid {
         )
     }
     pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option<Chunk> {
-        let index = Self::chunk_coords_to_index(x, y, z) + (CHUNK_SIZE / 2) as isize;
+        let index = Self::chunk_coords_to_index(x, y, z)  as isize;
         if (0..(32 * 32 * 32)).contains(&index) {
             return &self.0[index as usize];
         }
@@ -269,22 +245,29 @@ impl Chunk {
     pub fn get_faces(&self, block_index: usize) -> [bool; 6] {
         let (x, y, z) = Self::index_to_coords(block_index);
         [
-            *self.get_block(x, y, z.wrapping_add(1)) == None, // top
-            *self.get_block(x, y, z.wrapping_sub(1)) == None, // bottom
-            *self.get_block(x.wrapping_add(1), y, z) == None, // right
-            *self.get_block(x.wrapping_sub(1), y, z) == None, // left
-            *self.get_block(x, y.wrapping_add(1), z) == None, // front
-            *self.get_block(x, y.wrapping_sub(1), z) == None, // back
+            self.is_block(x, y, z.wrapping_add(1)), // top
+            self.is_block(x, y, z.wrapping_sub(1)), // bottom
+            self.is_block(x.wrapping_add(1), y, z), // right
+            self.is_block(x.wrapping_sub(1), y, z), // left
+            self.is_block(x, y.wrapping_add(1), z), // front
+            self.is_block(x, y.wrapping_sub(1), z), // back
         ]
     }
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> &Option<Block> {
         if (0..32).contains(&(x as i32)) && (0..32).contains(&(y as i32)) && (0..32).contains(&(z as i32)) {
             // not even allowed to go beyond u16 size
-            return &self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)];
+             &self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)]
         } else {
-            //possible from another chunk
+            &None
         }
-        &None
+    }
+    pub fn is_block(&self, x: usize, y: usize, z: usize) -> bool {
+        if (0..32).contains(&(x as i32)) && (0..32).contains(&(y as i32)) && (0..32).contains(&(z as i32)) {
+            // not even allowed to go beyond u16 size
+            self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)] != None
+        } else {
+            false
+        }
     }
     pub fn index_to_coords(index: usize) -> (usize, usize, usize) {
         let x = index % 32; // 0..32 then resets to 0
@@ -406,7 +389,7 @@ mod tests {
                 x[i];
             }
         }
-        println!("Default elapsed: {}μs", time.elapsed().as_micros()/100);
+        println!("Default elapsed: {}μs", time.elapsed().as_micros() / 100);
 
         let y: Vec<i32> = vec![42; SIZE];
         let time = Instant::now();
@@ -415,7 +398,7 @@ mod tests {
                 x[i];
             }
         }
-        println!("Vec elapsed: {}μs", time.elapsed().as_micros()/100);
+        println!("Vec elapsed: {}μs", time.elapsed().as_micros() / 100);
 
         let y = vec![42; SIZE].into_boxed_slice();
         let time = Instant::now();
@@ -424,7 +407,7 @@ mod tests {
                 x[i];
             }
         }
-        println!("Boxed slice elapsed: {}μs", time.elapsed().as_micros()/100);
+        println!("Boxed slice elapsed: {}μs", time.elapsed().as_micros() / 100);
 
         let y = Box::new(x);
         let time = Instant::now();
@@ -433,7 +416,7 @@ mod tests {
                 x[i];
             }
         }
-        println!("Boxed array elapsed: {}μs", time.elapsed().as_micros()/100);
+        println!("Boxed array elapsed: {}μs", time.elapsed().as_micros() / 100);
 
         let x = [Some(42); SIZE];
         let y = Box::new(x);
@@ -451,7 +434,7 @@ mod tests {
                 x[i];
             }
         }
-        println!("Optional reference boxed array elapsed: {}μs", time.elapsed().as_micros()/100);
+        println!("Optional reference boxed array elapsed: {}μs", time.elapsed().as_micros() / 100);
 
         let x = [Some(&42); SIZE];
         let y = Box::new(x);
@@ -461,7 +444,7 @@ mod tests {
                 x[i];
             }
         }
-        println!("Optional boxed array with reference elapsed: {}μs", time.elapsed().as_micros()/100);
+        println!("Optional boxed array with reference elapsed: {}μs", time.elapsed().as_micros() / 100);
     }
 
     #[test]

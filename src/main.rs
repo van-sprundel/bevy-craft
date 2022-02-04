@@ -1,7 +1,6 @@
 use bevy::input::mouse::MouseMotion;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
-use bevy::render::options::WgpuOptions;
 use bevy::render::render_resource::WgpuFeatures;
 use bevy_craft_new::chunk::*;
 use bevy_craft_new::debug::DebugPlugin;
@@ -9,12 +8,10 @@ use bevy_craft_new::debug::DebugPlugin;
 fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
-        .insert_resource(WgpuOptions { features: WgpuFeatures::POLYGON_MODE_LINE, ..Default::default() })
         .insert_resource(WindowDescriptor {
             vsync: false,
             ..Default::default()
         }).add_plugins(DefaultPlugins)
-        .add_plugin(WireframePlugin)
         .add_plugin(DebugPlugin)
         .init_resource::<ChunkGrid>()
         .add_state(GameState::InGame)
@@ -83,9 +80,9 @@ fn temp_chunk_spawn(mut chunk_grid: ResMut<ChunkGrid>) {
                 for x in 0..32 {
                     for y in 0..32 {
                         for z in 0..32 {
-                            // if (x+y+z) %2 == 0 {
+                            if !(a ==1 && b == 3 && c == 1) {
                                 chunk.set_block(Block::new(Texture::Dirt), x, y, z);
-                            // }
+                            }
                         }
                     }
                 }
@@ -93,6 +90,7 @@ fn temp_chunk_spawn(mut chunk_grid: ResMut<ChunkGrid>) {
             }
         }
     }
+    info!("Finished generating chunks")
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -121,14 +119,12 @@ fn queue_chunks(
 }
 
 fn spawn_chunks(
-    mut wireframe_config: ResMut<WireframeConfig>,
     mut commands: Commands,
     chunk_grid: Res<ChunkGrid>,
     mut ev_chunk_queue: EventReader<QueueChunkEvent>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    wireframe_config.global = true;
     for (i, ev) in ev_chunk_queue.iter().enumerate() {
         let c: Chunk = ev.0.clone();
         // info!("Spawning chunk");
@@ -151,6 +147,8 @@ fn spawn_chunks(
             material: materials.add(material),
             ..Default::default()
         });
+        info!("Done spawning chunk!")
+
     }
 }
 
