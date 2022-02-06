@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
+use crate::block::Block;
 
 const CHUNK_SIZE: usize = 32 * 32 * 32;
 
@@ -36,68 +37,70 @@ impl ChunkGrid {
         ((x1 + y1 + z1) + (CHUNK_SIZE / 2) as isize) as usize
     }
     pub fn get_faces(&self, c_x: isize, c_y: isize, c_z: isize, b_x: usize, b_y: usize, b_z: usize) -> [bool; 6] {
+        let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x, b_y, b_z);
+        // info!("world xyz: {} {} {}",w_x,w_y,w_z);
         let top = {
-            let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x, b_y, b_z.wrapping_add(1));
+            let (w_x, w_y, w_z) = (w_x, w_y, w_z + 1);
             let (c_x, c_y, c_z) = Self::convert_to_chunk_coords(w_x, w_y, w_z);
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(*c.get_block(b_x, b_y, b_z) != None)
+                !(c.is_block(b_x, b_y, b_z))
             } else {
                 true
             }
         };
         let bottom = {
-            let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x, b_y, b_z.wrapping_sub(1));
+            let (w_x, w_y, w_z) = (w_x, w_y, w_z - 1);
             let (c_x, c_y, c_z) = Self::convert_to_chunk_coords(w_x, w_y, w_z);
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(*c.get_block(b_x, b_y, b_z) != None)
+                !(c.is_block(b_x, b_y, b_z))
             } else {
                 true
             }
         };
         let right = {
-            let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x.wrapping_add(1), b_y, b_z);
+            let (w_x, w_y, w_z) = (w_x + 1, w_y, w_z);
             let (c_x, c_y, c_z) = Self::convert_to_chunk_coords(w_x, w_y, w_z);
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(*c.get_block(b_x, b_y, b_z) != None)
+                !(c.is_block(b_x, b_y, b_z))
             } else {
                 true
             }
         };
         let left = {
-            let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x.wrapping_sub(1), b_y, b_z);
+            let (w_x, w_y, w_z) = (w_x - 1, w_y, w_z);
             let (c_x, c_y, c_z) = Self::convert_to_chunk_coords(w_x, w_y, w_z);
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(*c.get_block(b_x, b_y, b_z) != None)
+                !(c.is_block(b_x, b_y, b_z))
             } else {
                 true
             }
         };
         let front = {
-            let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x, b_y.wrapping_add(1), b_z);
+            let (w_x, w_y, w_z) = (w_x, w_y + 1, w_z);
             let (c_x, c_y, c_z) = Self::convert_to_chunk_coords(w_x, w_y, w_z);
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(*c.get_block(b_x, b_y, b_z) != None)
+                !(c.is_block(b_x, b_y, b_z))
             } else {
                 true
             }
         };
         let back = {
-            let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x, b_y.wrapping_sub(1), b_z);
+            let (w_x, w_y, w_z) = (w_x, w_y - 1, w_z);
             let (c_x, c_y, c_z) = Self::convert_to_chunk_coords(w_x, w_y, w_z);
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(*c.get_block(b_x, b_y, b_z) != None)
+                !(c.is_block(b_x, b_y, b_z))
             } else {
                 true
             }
@@ -116,19 +119,20 @@ impl ChunkGrid {
                     None => {}
                     Some(b) => {
                         let (block_x, block_y, block_z) = Chunk::index_to_coords(i);
-                        let faces: [bool; 6] = if b.0 != 0 { self.get_faces(chunk_x, chunk_y, chunk_z, block_x, block_y, block_z) } else { [false; 6] };
+                        let faces: [bool; 6] = self.get_faces(chunk_x, chunk_y, chunk_z, block_x, block_y, block_z);
                         // info!("faces: {:?}",faces);
+                        let uv = b.get_texture_uv();
 
-                        for (index, (position, normal, uv)) in VERTICES.iter().enumerate() {
+                        for (index, (position, normal)) in VERTICES.iter().enumerate() {
                             let (x, y, z) = Chunk::index_to_coords(i);
                             let position = [
-                                position[0] + (x + (32 * chunk.x as usize)) as f32,
-                                position[1] + (y + (32 * chunk.y as usize)) as f32,
-                                position[2] + (z + (32 * chunk.z as usize)) as f32];
+                                position[0] + (x as isize + (32 * chunk_x)) as f32,
+                                position[1] + (y as isize + (32 * chunk_y)) as f32,
+                                position[2] + (z as isize + (32 * chunk_z)) as f32];
                             if faces[index / 4] {
                                 positions.push(position);
                                 normals.push(*normal);
-                                uvs.push(*uv);
+                                uvs.push(uv[index]);
                             } else {
                                 positions.push([0., 0., 0.]);
                                 normals.push([0., 0., 0.]);
@@ -167,7 +171,7 @@ impl ChunkGrid {
         )
     }
     pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option<Chunk> {
-        let index = Self::chunk_coords_to_index(x, y, z)  as isize;
+        let index = Self::chunk_coords_to_index(x, y, z) as isize;
         if (0..(32 * 32 * 32)).contains(&index) {
             return &self.0[index as usize];
         }
@@ -178,10 +182,18 @@ impl ChunkGrid {
         ((c_x * 32) + b_x as isize, (c_y * 32) + b_y as isize, (c_z * 32) + b_z as isize)
     }
     fn convert_to_block_coords(w_x: isize, w_y: isize, w_z: isize) -> (usize, usize, usize) {
-        ((w_x % 32) as usize, (w_y % 32) as usize, (w_z % 32) as usize)
+        (
+            if w_x < 0 { 32 + (w_x % 32) } else { w_x % 32 } as usize,
+            if w_y < 0 { 32 + (w_y % 32) } else { w_y % 32 } as usize,
+            if w_z < 0 { 32 + (w_z % 32) } else { w_z % 32 } as usize
+        )
     }
     fn convert_to_chunk_coords(w_x: isize, w_y: isize, w_z: isize) -> (isize, isize, isize) {
-        (w_x / 32, w_y / 32, w_z / 32)
+        (
+            if w_x < 0 { (w_x / 32) - 1 } else { w_x / 32 },
+            if w_y < 0 { (w_y / 32) - 1 } else { w_y / 32 },
+            if w_z < 0 { (w_z / 32) - 1 } else { w_z / 32 },
+        )
     }
 }
 
@@ -193,44 +205,15 @@ impl Default for ChunkGrid {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Chunk {
-    pub x: u16,
-    pub y: u16,
-    pub z: u16,
+    pub x: i16,
+    pub y: i16,
+    pub z: i16,
     pub blocks: Box<[Option<Block>; CHUNK_SIZE]>,
     pub spawned: bool,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct Block(u8);
-
-pub enum Texture {
-    Air,
-    Dirt,
-    Grass,
-}
-
-impl Block {
-    const EMPTY: Option<Block> = None;
-    pub fn new(texture: Texture) -> Self {
-        // 64 textures | 6 bits
-        match texture {
-            Texture::Air => Self(0),
-            Texture::Dirt => Self(1),
-            Texture::Grass => Self(2)
-        }
-    }
-    pub fn get_texture(&self) -> Texture {
-        match self.0 {
-            0 => Texture::Air,
-            1 => Texture::Dirt,
-            2 => Texture::Grass,
-            _ => Texture::Air,
-        }
-    }
-}
-
 impl Chunk {
-    pub fn new(x: u16, y: u16, z: u16) -> Self {
+    pub fn new(x: i16, y: i16, z: i16) -> Self {
         Self {
             blocks: Box::new([Block::EMPTY; 32 * 32 * 32]),
             spawned: false,
@@ -256,7 +239,7 @@ impl Chunk {
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> &Option<Block> {
         if (0..32).contains(&(x as i32)) && (0..32).contains(&(y as i32)) && (0..32).contains(&(z as i32)) {
             // not even allowed to go beyond u16 size
-             &self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)]
+            &self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)]
         } else {
             &None
         }
@@ -285,39 +268,6 @@ impl Chunk {
     const EMPTY: Option<Chunk> = None;
 }
 
-const VERTICES: &[([f32; 3], [f32; 3], [f32; 2]); 24] = &[
-// Top
-    ([-0.5, -0.5, 0.5], [0., 0., 1.0], [0., 0.]),
-    ([0.5, -0.5, 0.5], [0., 0., 1.0], [1.0, 0.]),
-    ([0.5, 0.5, 0.5], [0., 0., 1.0], [1.0, 1.0]),
-    ([-0.5, 0.5, 0.5], [0., 0., 1.0], [0., 1.0]),
-// Bottom
-    ([-0.5, 0.5, -0.5], [0., 0., -1.0], [1.0, 0.]),
-    ([0.5, 0.5, -0.5], [0., 0., -1.0], [0., 0.]),
-    ([0.5, -0.5, -0.5], [0., 0., -1.0], [0., 1.0]),
-    ([-0.5, -0.5, -0.5], [0., 0., -1.0], [1.0, 1.0]),
-// Right
-    ([0.5, -0.5, -0.5], [1.0, 0., 0.], [0., 0.]),
-    ([0.5, 0.5, -0.5], [1.0, 0., 0.], [1.0, 0.]),
-    ([0.5, 0.5, 0.5], [1.0, 0., 0.], [1.0, 1.0]),
-    ([0.5, -0.5, 0.5], [1.0, 0., 0.], [0., 1.0]),
-// Left
-    ([-0.5, -0.5, 0.5], [-1.0, 0., 0.], [1.0, 0.]),
-    ([-0.5, 0.5, 0.5], [-1.0, 0., 0.], [0., 0.]),
-    ([-0.5, 0.5, -0.5], [-1.0, 0., 0.], [0., 1.0]),
-    ([-0.5, -0.5, -0.5], [-1.0, 0., 0.], [1.0, 1.0]),
-// Front
-    ([0.5, 0.5, -0.5], [0., 1.0, 0.], [1.0, 0.]),
-    ([-0.5, 0.5, -0.5], [0., 1.0, 0.], [0., 0.]),
-    ([-0.5, 0.5, 0.5], [0., 1.0, 0.], [0., 1.0]),
-    ([0.5, 0.5, 0.5], [0., 1.0, 0.], [1.0, 1.0]),
-// Back
-    ([0.5, -0.5, 0.5], [0., -1.0, 0.], [0., 0.]),
-    ([-0.5, -0.5, 0.5], [0., -1.0, 0.], [1.0, 0.]),
-    ([-0.5, -0.5, -0.5], [0., -1.0, 0.], [1.0, 1.0]),
-    ([0.5, -0.5, -0.5], [0., -1.0, 0.], [0., 1.0]),
-];
-
 const INDICES: [u32; 36] = [
     0, 1, 2, 2, 3, 0, // top
     4, 5, 6, 6, 7, 4, // bottom
@@ -325,6 +275,39 @@ const INDICES: [u32; 36] = [
     12, 13, 14, 14, 15, 12, // left
     16, 17, 18, 18, 19, 16, // front
     20, 21, 22, 22, 23, 20, // back
+];
+
+const VERTICES: &[([f32; 3], [f32; 3]); 24] = &[
+// Top
+    ([-0.5, -0.5, 0.5], [0., 0., 1.0]),
+    ([0.5, -0.5, 0.5], [0., 0., 1.0]),
+    ([0.5, 0.5, 0.5], [0., 0., 1.0]),
+    ([-0.5, 0.5, 0.5], [0., 0., 1.0]),
+// Bottom
+    ([-0.5, 0.5, -0.5], [0., 0., -1.0]),
+    ([0.5, 0.5, -0.5], [0., 0., -1.0]),
+    ([0.5, -0.5, -0.5], [0., 0., -1.0]),
+    ([-0.5, -0.5, -0.5], [0., 0., -1.0]),
+// Right
+    ([0.5, -0.5, -0.5], [1.0, 0., 0.]),
+    ([0.5, 0.5, -0.5], [1.0, 0., 0.]),
+    ([0.5, 0.5, 0.5], [1.0, 0., 0.]),
+    ([0.5, -0.5, 0.5], [1.0, 0., 0.]),
+// Left
+    ([-0.5, -0.5, 0.5], [-1.0, 0., 0.]),
+    ([-0.5, 0.5, 0.5], [-1.0, 0., 0.]),
+    ([-0.5, 0.5, -0.5], [-1.0, 0., 0.]),
+    ([-0.5, -0.5, -0.5], [-1.0, 0., 0.]),
+// Front
+    ([0.5, 0.5, -0.5], [0., 1.0, 0.]),
+    ([-0.5, 0.5, -0.5], [0., 1.0, 0.]),
+    ([-0.5, 0.5, 0.5], [0., 1.0, 0.]),
+    ([0.5, 0.5, 0.5], [0., 1.0, 0.]),
+// Back
+    ([0.5, -0.5, 0.5], [0., -1.0, 0.]),
+    ([-0.5, -0.5, 0.5], [0., -1.0, 0.]),
+    ([-0.5, -0.5, -0.5], [0., -1.0, 0.]),
+    ([0.5, -0.5, -0.5], [0., -1.0, 0.]),
 ];
 
 #[cfg(test)]

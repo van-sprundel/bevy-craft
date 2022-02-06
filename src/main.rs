@@ -1,18 +1,27 @@
 use bevy::input::mouse::MouseMotion;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
+use bevy::render::options::WgpuOptions;
+use bevy::render::primitives::Plane;
 use bevy::render::render_resource::WgpuFeatures;
+use rand::Rng;
+use bevy_craft_new::block::{Block, Texture};
 use bevy_craft_new::chunk::*;
 use bevy_craft_new::debug::DebugPlugin;
 
 fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
+        .insert_resource(WgpuOptions {
+            features: WgpuFeatures::POLYGON_MODE_LINE,
+            ..Default::default()
+        })
         .insert_resource(WindowDescriptor {
             vsync: false,
             ..Default::default()
         }).add_plugins(DefaultPlugins)
         .add_plugin(DebugPlugin)
+        .add_plugin(WireframePlugin)
         .init_resource::<ChunkGrid>()
         .add_state(GameState::InGame)
         .add_event::<QueueChunkEvent>()
@@ -75,13 +84,13 @@ fn switch_menu(
 fn temp_chunk_spawn(mut chunk_grid: ResMut<ChunkGrid>) {
     for a in 0..2 {
         for c in 0..2 {
-            for b in 0..4 {
+            for b in 0..2 {
                 let mut chunk = Chunk::new(a, b, c);
                 for x in 0..32 {
                     for y in 0..32 {
                         for z in 0..32 {
-                            if !(a ==1 && b == 3 && c == 1) {
-                                chunk.set_block(Block::new(Texture::Dirt), x, y, z);
+                            if !(a ==0 && b == 1 && c == 0) {
+                                chunk.set_block(Block::new(Texture::Log), x, y, z);
                             }
                         }
                     }
@@ -95,7 +104,7 @@ fn temp_chunk_spawn(mut chunk_grid: ResMut<ChunkGrid>) {
 
 fn setup_camera(mut commands: Commands) {
     let mut camera = PerspectiveCameraBundle::new_3d();
-    camera.transform = Transform::from_xyz(35., 2., 35.);
+    camera.transform = Transform::from_xyz(50., 2., 50.);
     commands.spawn_bundle(camera).insert(Camera::default());
 }
 
@@ -119,28 +128,35 @@ fn queue_chunks(
 }
 
 fn spawn_chunks(
+    mut wireframe_config: ResMut<WireframeConfig>,
     mut commands: Commands,
+    assets: Res<AssetServer>,
     chunk_grid: Res<ChunkGrid>,
     mut ev_chunk_queue: EventReader<QueueChunkEvent>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (i, ev) in ev_chunk_queue.iter().enumerate() {
+    wireframe_config.global = true;
+    for ev in ev_chunk_queue.iter() {
         let c: Chunk = ev.0.clone();
         // info!("Spawning chunk");
-        let mut material: StandardMaterial = match i % 10 {
-            0 => Color::PINK.into(),
-            1 => Color::BLUE.into(),
-            2 => Color::GOLD.into(),
-            3 => Color::FUCHSIA.into(),
-            4 => Color::TEAL.into(),
-            5 => Color::DARK_GRAY.into(),
-            6 => Color::DARK_GREEN.into(),
-            7 => Color::GREEN.into(),
-            8 => Color::INDIGO.into(),
-            9 => Color::AZURE.into(),
-            _ => Color::WHITE.into()
-        };
+        // let mut material: StandardMaterial = match i % 10 {
+        //     0 => Color::PINK.into(),
+        //     1 => Color::BLUE.into(),
+        //     2 => Color::GOLD.into(),
+        //     3 => Color::FUCHSIA.into(),
+        //     4 => Color::TEAL.into(),
+        //     5 => Color::DARK_GRAY.into(),
+        //     6 => Color::DARK_GREEN.into(),
+        //     7 => Color::GREEN.into(),
+        //     8 => Color::INDIGO.into(),
+        //     9 => Color::AZURE.into(),
+        //     _ => Color::WHITE.into()
+        // };
+        let texture = assets.load("TEXTURE_UV_MAP.png");
+        let mut material = StandardMaterial::default();
+        // material.base_color = Color::hex("78AC30").unwrap();
+        material.base_color_texture = Some(texture.clone());
         material.unlit = true;
         commands.spawn_bundle(PbrBundle {
             mesh: meshes.add(chunk_grid.generate_mesh(c.x as isize, c.y as isize, c.z as isize)),
