@@ -1,6 +1,8 @@
 use bevy::prelude::*;
-use bevy::render::mesh::Indices;
+use bevy::render::mesh::{Indices, VertexAttributeValues};
 use bevy::render::render_resource::PrimitiveTopology;
+use bevy::tasks::Task;
+use futures_lite::Future;
 use crate::block::Block;
 
 const CHUNK_SIZE: usize = 32 * 32 * 32;
@@ -12,7 +14,7 @@ impl ChunkGrid {
     pub fn new() -> Self {
         Self(Box::new([Chunk::EMPTY; CHUNK_SIZE]))
     }
-    pub fn set_chunk(&mut self, chunk: Chunk) {
+    pub fn set_chunk(&mut self, chunk:  Chunk) {
         let x = chunk.x as isize;
         let y = chunk.y as isize;
         let z = chunk.z as isize;
@@ -107,61 +109,88 @@ impl ChunkGrid {
         };
         [top, bottom, right, left, front, back]
     }
-    pub fn generate_mesh(&self, chunk_x: isize, chunk_y: isize, chunk_z: isize) -> Mesh {
+    pub fn generate_mesh(&self) -> Mesh {
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let mut positions = Vec::with_capacity(32 * 32 * 32 * 32); //max
+        let mut normals = Vec::with_capacity(32 * 32 * 32 * 32); //max
+        let mut uvs = Vec::with_capacity(32 * 32 * 32 * 32); //max
+        let mut indices = Vec::with_capacity(32 * 32 * 32 * 32);
+        for c in self.0.iter() {
+            if let Some(c) = c {
+                if !c.spawned {
+                    let (pos, normal, uv, indice) = self.generate_chunk_data(c);
+                    positions.extend(pos);
+                    normals.extend(normal);
+                    uvs.extend(uv);
+                    indices.extend(indice);
+                }
+            }
+        }
+        mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+        mesh.set_indices(Some(Indices::U32(indices)));
+        mesh
+    }
+    pub fn generate_chunk_mesh(&self, chunk: &Chunk) -> Mesh {
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
+        let (positions, normals, uvs, indices) = self.generate_chunk_data(chunk);
+
+        mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+        //TODO per vertex color for grass, should add color to generate_chunk_data
+        // mesh.set_attribute(Mesh::ATTRIBUTE_COLOR,[]);
+        mesh.set_indices(Some(Indices::U32(indices)));
+        return mesh;
+    }
+    pub fn generate_chunk_data(&self, chunk: &Chunk) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<u32>) {
         let mut positions = Vec::with_capacity(32 * 32 * 32); //max
         let mut normals = Vec::with_capacity(32 * 32 * 32); //max
         let mut uvs = Vec::with_capacity(32 * 32 * 32); //max
         let mut indices = Vec::with_capacity(32 * 32 * 32);
-        info!("generating mesh with xyz: {} {} {}",chunk_x,chunk_y,chunk_z);
-        if let Some(chunk) = self.get_chunk_from_coords(chunk_x, chunk_y, chunk_z) {
-            chunk.blocks.iter().enumerate().for_each(|(i, b)| {
-                match b {
-                    None => {}
-                    Some(b) => {
-                        let (block_x, block_y, block_z) = Chunk::index_to_coords(i);
-                        let faces: [bool; 6] = self.get_faces(chunk_x, chunk_y, chunk_z, block_x, block_y, block_z);
-                        // info!("faces: {:?}",faces);
-                        let uv = b.get_texture_uv();
+        info!("generating mesh with xyz: {} {} {}",chunk.x,chunk.y,chunk.z);
+        chunk.blocks.iter().enumerate().for_each(|(i, b)| {
+            match b {
+                None => {}
+                Some(b) => {
+                    let (block_x, block_y, block_z) = Chunk::index_to_coords(i);
+                    let faces: [bool; 6] = self.get_faces(chunk.x as isize, chunk.y as isize, chunk.z as isize, block_x, block_y, block_z);
+                    // info!("faces: {:?}",faces);
+                    let uv = b.get_texture_uv();
 
-                        for (index, (position, normal)) in VERTICES.iter().enumerate() {
-                            let (x, y, z) = Chunk::index_to_coords(i);
-                            let position = [
-                                position[0] + (x as isize + (32 * chunk_x)) as f32,
-                                position[1] + (y as isize + (32 * chunk_y)) as f32,
-                                position[2] + (z as isize + (32 * chunk_z)) as f32];
-                            if faces[index / 4] {
-                                positions.push(position);
-                                normals.push(*normal);
-                                uvs.push(uv[index]);
-                            } else {
-                                positions.push([0., 0., 0.]);
-                                normals.push([0., 0., 0.]);
-                                uvs.push([0., 0.]);
-                            }
+                    for (index, (position, normal)) in VERTICES.iter().enumerate() {
+                        let (x, y, z) = Chunk::index_to_coords(i);
+                        let position = [
+                            position[0] + (x as isize + (32 * chunk.x as isize)) as f32,
+                            position[1] + (y as isize + (32 * chunk.y as isize)) as f32,
+                            position[2] + (z as isize + (32 * chunk.z as isize)) as f32
+                        ];
+                        if faces[index / 4] {
+                            positions.push(position);
+                            normals.push(*normal);
+                            uvs.push(uv[index]);
+                        } else {
+                            positions.push([0., 0., 0.]);
+                            normals.push([0., 0., 0.]);
+                            uvs.push([0., 0.]);
                         }
-                        for x in 0..6 {
-                            if faces[x] {
-                                let temp = &mut INDICES[x * 6..(x * 6) + 6];
-                                for u in temp.iter_mut() {
-                                    *u += (i * 24) as u32;
-                                }
-                                indices.extend_from_slice(temp);
-                            } else {
-                                indices.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
+                    }
+                    for x in 0..6 {
+                        if faces[x] {
+                            let temp = &mut INDICES[x * 6..(x * 6) + 6];
+                            for u in temp.iter_mut() {
+                                *u += (i * 24) as u32;
                             }
+                            indices.extend_from_slice(temp);
+                        } else {
+                            indices.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
                         }
                     }
                 }
-            });
-            let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-            mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-            mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-            mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-            mesh.set_indices(Some(Indices::U32(indices)));
-            return mesh;
-        }
-
-        return panic!();
+            }
+        });
+        (positions, normals, uvs, indices)
     }
     pub fn block_coords_in_chunk(x: isize, y: isize, z: isize) -> (usize, usize, usize) {
         (
@@ -170,14 +199,14 @@ impl ChunkGrid {
             (z % (32 * 32)) as usize
         )
     }
-    pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option<Chunk> {
+    pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option< Chunk> {
         let index = Self::chunk_coords_to_index(x, y, z) as isize;
         if (0..(32 * 32 * 32)).contains(&index) {
             return &self.0[index as usize];
         }
-
         &None
     }
+
     fn convert_to_world_coords(c_x: isize, c_y: isize, c_z: isize, b_x: usize, b_y: usize, b_z: usize) -> (isize, isize, isize) {
         ((c_x * 32) + b_x as isize, (c_y * 32) + b_y as isize, (c_z * 32) + b_z as isize)
     }
@@ -265,7 +294,7 @@ impl Chunk {
         (x + y + z) as usize
     }
 
-    const EMPTY: Option<Chunk> = None;
+    const EMPTY: Option< Chunk> = None;
 }
 
 const INDICES: [u32; 36] = [

@@ -17,7 +17,7 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(WindowDescriptor {
-            vsync: false,
+            vsync: true,
             ..Default::default()
         }).add_plugins(DefaultPlugins)
         .add_plugin(DebugPlugin)
@@ -158,8 +158,8 @@ fn spawn_chunks(
         // material.base_color = Color::hex("78AC30").unwrap();
         material.base_color_texture = Some(texture.clone());
         material.unlit = true;
-        commands.spawn_bundle(PbrBundle {
-            mesh: meshes.add(chunk_grid.generate_mesh(c.x as isize, c.y as isize, c.z as isize)),
+        commands.spawn_bundle(MaterialMeshBundle {
+            mesh: meshes.add(chunk_grid.generate_chunk_mesh(&c)),
             material: materials.add(material),
             ..Default::default()
         });
@@ -218,15 +218,14 @@ fn move_camera(
 
 fn rotate_camera(
     mut mouse: EventReader<MouseMotion>,
-    time: Res<Time>,
     mut query: Query<(&mut Camera, &mut Transform), With<Camera>>,
 ) {
     let (mut cam, mut transform) = query.single_mut();
 
     for x in mouse.iter() {
         // info!("{:?}",x);
-        cam.yaw -= x.delta.x * cam.sens * time.delta_seconds();
-        cam.pitch -= x.delta.y * cam.sens * time.delta_seconds();
+        cam.yaw -= x.delta.x * cam.sens * 0.04;
+        cam.pitch -= x.delta.y * cam.sens * 0.04;
     }
 
     cam.pitch = cam.pitch.clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);

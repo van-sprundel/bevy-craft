@@ -18,7 +18,7 @@ pub enum Texture {
 }
 
 impl Block {
-    pub(crate) const EMPTY: Option<Block> = None;
+    pub(crate) const EMPTY: Option< Block> = None;
     pub fn new(texture: Texture) -> Self {
         // 64 textures | 6 bits
         match texture {
