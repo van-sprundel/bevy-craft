@@ -1,18 +1,27 @@
+use std::rc::Rc;
+use std::sync::Arc;
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, VertexAttributeValues};
+use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::tasks::Task;
-use futures_lite::Future;
+use spin::Mutex;
+
 use crate::block::Block;
 
 const CHUNK_SIZE: usize = 32 * 32 * 32;
 
-#[derive(Component)]
-pub struct ChunkGrid(pub Box<[Option<Chunk>; CHUNK_SIZE]>);
+// pub struct ChunkGrid(pub Box<[Option<Chunk>; CHUNK_SIZE]>);
+pub struct ChunkGrid {
+    pub chunks: Box<[Option<Chunk>; CHUNK_SIZE]>,
+    pub queued_chunks: Vec<Chunk>
+}
 
 impl ChunkGrid {
     pub fn new() -> Self {
-        Self(Box::new([Chunk::EMPTY; CHUNK_SIZE]))
+        Self {
+            chunks: Box::new([Chunk::EMPTY; CHUNK_SIZE]),
+            queued_chunks: vec![]
+        }
     }
     pub fn set_chunk(&mut self, chunk:  Chunk) {
         let x = chunk.x as isize;
@@ -20,7 +29,10 @@ impl ChunkGrid {
         let z = chunk.z as isize;
         let index = Self::chunk_coords_to_index(x, y, z);
         info!("setting chunk at xyz: {}{}{} i: {}",x,y,z,index);
-        self.0[index] = Some(chunk);
+        self.chunks[index] = Some(chunk);
+    }
+    pub fn add_to_queue(&mut self, task:&Chunk) {
+        self.queued_chunks.push(task.clone());
     }
     pub fn chunk_index_to_coords(index: usize) -> (usize, usize, usize) {
         let index = index - (CHUNK_SIZE / 2);
@@ -115,7 +127,7 @@ impl ChunkGrid {
         let mut normals = Vec::with_capacity(32 * 32 * 32 * 32); //max
         let mut uvs = Vec::with_capacity(32 * 32 * 32 * 32); //max
         let mut indices = Vec::with_capacity(32 * 32 * 32 * 32);
-        for c in self.0.iter() {
+        for c in self.chunks.iter() {
             if let Some(c) = c {
                 if !c.spawned {
                     let (pos, normal, uv, indice) = self.generate_chunk_data(c);
@@ -202,7 +214,7 @@ impl ChunkGrid {
     pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option< Chunk> {
         let index = Self::chunk_coords_to_index(x, y, z) as isize;
         if (0..(32 * 32 * 32)).contains(&index) {
-            return &self.0[index as usize];
+            return &self.chunks[index as usize];
         }
         &None
     }

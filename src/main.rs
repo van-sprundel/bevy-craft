@@ -1,14 +1,29 @@
+#![feature(vec_retain_mut)]
+
+use std::sync::Arc;
+
 use bevy::input::mouse::MouseMotion;
 use bevy::pbr::wireframe::{WireframeConfig, WireframePlugin};
 use bevy::prelude::*;
+use bevy::reflect::List;
 use bevy::render::options::WgpuOptions;
 use bevy::render::primitives::Plane;
 use bevy::render::render_resource::WgpuFeatures;
-use rand::Rng;
+use bevy::tasks::AsyncComputeTaskPool;
+use futures_lite::future;
+use lazy_static::lazy_static;
+use spin::mutex::Mutex;
+
 use bevy_craft_new::block::{Block, Texture};
 use bevy_craft_new::chunk::*;
 use bevy_craft_new::debug::DebugPlugin;
 
+lazy_static! {
+     static ref CHUNK_GRID:Mutex<ChunkGrid> = {
+        let c = ChunkGrid::default();
+        Mutex::new(c)
+    };
+}
 fn main() {
     App::new()
         .insert_resource(Msaa { samples: 4 })
@@ -22,9 +37,7 @@ fn main() {
         }).add_plugins(DefaultPlugins)
         .add_plugin(DebugPlugin)
         .add_plugin(WireframePlugin)
-        .init_resource::<ChunkGrid>()
         .add_state(GameState::InGame)
-        .add_event::<QueueChunkEvent>()
         .add_startup_system(setup_camera)
         .add_system_set(
             SystemSet::on_enter(GameState::InGame)
@@ -81,7 +94,7 @@ fn switch_menu(
     });
 }
 
-fn temp_chunk_spawn(mut chunk_grid: ResMut<ChunkGrid>) {
+fn temp_chunk_spawn() {
     for a in 0..2 {
         for c in 0..2 {
             for b in 0..2 {
@@ -89,13 +102,13 @@ fn temp_chunk_spawn(mut chunk_grid: ResMut<ChunkGrid>) {
                 for x in 0..32 {
                     for y in 0..32 {
                         for z in 0..32 {
-                            if !(a ==0 && b == 1 && c == 0) {
+                            if !(a == 0 && b == 1 && c == 0) {
                                 chunk.set_block(Block::new(Texture::Log), x, y, z);
                             }
                         }
                     }
                 }
-                chunk_grid.set_chunk(chunk);
+                CHUNK_GRID.lock().set_chunk(chunk);
             }
         }
     }
@@ -108,64 +121,57 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(camera).insert(Camera::default());
 }
 
-struct QueueChunkEvent(Chunk);
-
 fn queue_chunks(
-    mut chunk_grid: ResMut<ChunkGrid>,
-    mut ev_chunk_queue: EventWriter<QueueChunkEvent>,
+    thread_pool: Res<AsyncComputeTaskPool>,
 ) {
-    chunk_grid.0.iter_mut().for_each(|c| {
-        match c {
-            None => {}
-            Some(x) => {
-                if !x.spawned {
-                    x.spawned = true;
-                    ev_chunk_queue.send(QueueChunkEvent(x.clone()));
-                }
+    let mut chunks = CHUNK_GRID.lock().chunks.to_vec();
+    for (i, c) in chunks.iter_mut().enumerate() {
+        if let Some(c) = c {
+            if !c.spawned {
+                info!("Queueing chunk {}",i);
+                // let task = thread_pool.spawn(async move {
+                //    c
+                // });
+                CHUNK_GRID.lock().add_to_queue(c);
+                c.spawned = true;
+                CHUNK_GRID.lock().chunks[i] = Some(c.clone());
             }
         }
-    });
+    }
 }
 
 fn spawn_chunks(
     mut wireframe_config: ResMut<WireframeConfig>,
     mut commands: Commands,
     assets: Res<AssetServer>,
-    chunk_grid: Res<ChunkGrid>,
-    mut ev_chunk_queue: EventReader<QueueChunkEvent>,
+    // mut chunk_tasks: Query<(Entity, &mut Task<Chunk>)>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     wireframe_config.global = true;
-    for ev in ev_chunk_queue.iter() {
-        let c: Chunk = ev.0.clone();
-        // info!("Spawning chunk");
-        // let mut material: StandardMaterial = match i % 10 {
-        //     0 => Color::PINK.into(),
-        //     1 => Color::BLUE.into(),
-        //     2 => Color::GOLD.into(),
-        //     3 => Color::FUCHSIA.into(),
-        //     4 => Color::TEAL.into(),
-        //     5 => Color::DARK_GRAY.into(),
-        //     6 => Color::DARK_GREEN.into(),
-        //     7 => Color::GREEN.into(),
-        //     8 => Color::INDIGO.into(),
-        //     9 => Color::AZURE.into(),
-        //     _ => Color::WHITE.into()
-        // };
-        let texture = assets.load("TEXTURE_UV_MAP.png");
-        let mut material = StandardMaterial::default();
-        // material.base_color = Color::hex("78AC30").unwrap();
-        material.base_color_texture = Some(texture.clone());
-        material.unlit = true;
-        commands.spawn_bundle(MaterialMeshBundle {
-            mesh: meshes.add(chunk_grid.generate_chunk_mesh(&c)),
-            material: materials.add(material),
-            ..Default::default()
-        });
-        info!("Done spawning chunk!")
+    let mut queued_chunks = CHUNK_GRID.lock().queued_chunks.to_vec();
+    queued_chunks.iter_mut().for_each(|mut task| {
+        if !task.spawned {
+            // if let Some(c) = future::block_on(future::poll_once(task)) {
+            let texture = assets.load("TEXTURE_UV_MAP.png");
+            let mut material = StandardMaterial::default();
+            // material.base_color = Color::hex("78AC30").unwrap();
+            material.base_color_texture = Some(texture.clone());
+            material.unlit = true;
 
-    }
+            let mesh = CHUNK_GRID.lock().generate_chunk_mesh(task);
+            commands.spawn_bundle(MaterialMeshBundle {
+                mesh: meshes.add(mesh),
+                material: materials.add(material),
+                ..Default::default()
+            });
+
+            info!("Done spawning chunk!");
+            // }
+            task.spawned = true;
+        }
+    });
+    CHUNK_GRID.lock().queued_chunks = queued_chunks;
 }
 
 #[derive(Component)]

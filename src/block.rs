@@ -1,4 +1,3 @@
-use bevy::prelude::shape::Cube;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Block(pub u8);

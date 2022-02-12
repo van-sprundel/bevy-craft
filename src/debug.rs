@@ -16,9 +16,13 @@ impl Plugin for DebugPlugin {
 #[derive(Component)]
 struct TextChanges;
 
-fn infotext_system(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn infotext_system(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>
+) {
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
     commands.spawn_bundle(UiCameraBundle::default());
+
     commands
         .spawn_bundle(TextBundle {
             style: Style {
@@ -46,6 +50,7 @@ fn infotext_system(mut commands: Commands, asset_server: Res<AssetServer>) {
         })
         .insert(TextChanges);
 }
+
 struct UiTimer(Timer);
 
 fn change_text_system(
