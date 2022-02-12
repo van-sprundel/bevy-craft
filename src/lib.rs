@@ -1,3 +1,3 @@
+pub mod block;
 pub mod chunk;
 pub mod debug;
-pub mod block;

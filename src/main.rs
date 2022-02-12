@@ -19,7 +19,7 @@ use bevy_craft_new::chunk::*;
 use bevy_craft_new::debug::DebugPlugin;
 
 lazy_static! {
-     static ref CHUNK_GRID:Mutex<ChunkGrid> = {
+    static ref CHUNK_GRID: Mutex<ChunkGrid> = {
         let c = ChunkGrid::default();
         Mutex::new(c)
     };
@@ -34,23 +34,18 @@ fn main() {
         .insert_resource(WindowDescriptor {
             vsync: true,
             ..Default::default()
-        }).add_plugins(DefaultPlugins)
+        })
+        .add_plugins(DefaultPlugins)
         .add_plugin(DebugPlugin)
         .add_plugin(WireframePlugin)
         .add_state(GameState::InGame)
         .add_startup_system(setup_camera)
-        .add_system_set(
-            SystemSet::on_enter(GameState::InGame)
-                .with_system(hide_cursor)
-        )
-        .add_system_set(
-            SystemSet::on_enter(GameState::Menu)
-                .with_system(show_cursor)
-        )
+        .add_system_set(SystemSet::on_enter(GameState::InGame).with_system(hide_cursor))
+        .add_system_set(SystemSet::on_enter(GameState::Menu).with_system(show_cursor))
         .add_system_set(
             SystemSet::on_update(GameState::InGame)
                 .with_system(move_camera)
-                .with_system(rotate_camera)
+                .with_system(rotate_camera),
         )
         .add_system(switch_menu)
         .add_startup_system(temp_chunk_spawn)
@@ -65,9 +60,7 @@ pub enum GameState {
     Menu,
 }
 
-fn hide_cursor(
-    mut windows: ResMut<Windows>,
-) {
+fn hide_cursor(mut windows: ResMut<Windows>) {
     let w = windows.get_primary_mut().unwrap();
     w.set_cursor_visibility(false);
     w.set_cursor_position(Vec2::new(w.width() / 2., w.height() / 2.));
@@ -80,9 +73,7 @@ fn show_cursor(mut windows: ResMut<Windows>) {
     w.set_cursor_lock_mode(false);
 }
 
-fn switch_menu(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut state: ResMut<State<GameState>>) {
+fn switch_menu(keyboard_input: Res<Input<KeyCode>>, mut state: ResMut<State<GameState>>) {
     keyboard_input.get_just_pressed().for_each(|x| {
         if *x == KeyCode::Escape {
             if *state.current() == GameState::Menu {
@@ -121,14 +112,12 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(camera).insert(Camera::default());
 }
 
-fn queue_chunks(
-    thread_pool: Res<AsyncComputeTaskPool>,
-) {
+fn queue_chunks(thread_pool: Res<AsyncComputeTaskPool>) {
     let mut chunks = CHUNK_GRID.lock().chunks.to_vec();
     for (i, c) in chunks.iter_mut().enumerate() {
         if let Some(c) = c {
             if !c.spawned {
-                info!("Queueing chunk {}",i);
+                info!("Queueing chunk {}", i);
                 // let task = thread_pool.spawn(async move {
                 //    c
                 // });
@@ -234,7 +223,9 @@ fn rotate_camera(
         cam.pitch -= x.delta.y * cam.sens * 0.04;
     }
 
-    cam.pitch = cam.pitch.clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);
+    cam.pitch = cam
+        .pitch
+        .clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);
 
     transform.rotation = Quat::from_rotation_y(cam.yaw) * Quat::from_rotation_x(cam.pitch);
 }

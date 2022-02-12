@@ -1,10 +1,10 @@
-use std::rc::Rc;
-use std::sync::Arc;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::tasks::Task;
 use spin::Mutex;
+use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::block::Block;
 
@@ -13,25 +13,25 @@ const CHUNK_SIZE: usize = 32 * 32 * 32;
 // pub struct ChunkGrid(pub Box<[Option<Chunk>; CHUNK_SIZE]>);
 pub struct ChunkGrid {
     pub chunks: Box<[Option<Chunk>; CHUNK_SIZE]>,
-    pub queued_chunks: Vec<Chunk>
+    pub queued_chunks: Vec<Chunk>,
 }
 
 impl ChunkGrid {
     pub fn new() -> Self {
         Self {
             chunks: Box::new([Chunk::EMPTY; CHUNK_SIZE]),
-            queued_chunks: vec![]
+            queued_chunks: vec![],
         }
     }
-    pub fn set_chunk(&mut self, chunk:  Chunk) {
+    pub fn set_chunk(&mut self, chunk: Chunk) {
         let x = chunk.x as isize;
         let y = chunk.y as isize;
         let z = chunk.z as isize;
         let index = Self::chunk_coords_to_index(x, y, z);
-        info!("setting chunk at xyz: {}{}{} i: {}",x,y,z,index);
+        info!("setting chunk at xyz: {}{}{} i: {}", x, y, z, index);
         self.chunks[index] = Some(chunk);
     }
-    pub fn add_to_queue(&mut self, task:&Chunk) {
+    pub fn add_to_queue(&mut self, task: &Chunk) {
         self.queued_chunks.push(task.clone());
     }
     pub fn chunk_index_to_coords(index: usize) -> (usize, usize, usize) {
@@ -46,11 +46,19 @@ impl ChunkGrid {
     pub fn chunk_coords_to_index(x: isize, y: isize, z: isize) -> usize {
         let x1 = x; // incremental is the same
         let y1 = y * 32 * 32; // incremental is 1:32*32
-        let z1 = z * 32;         // incremental is 1:32
-        // info!("chunk coord to index: {:?} {}",(x,y,z),i);
+        let z1 = z * 32; // incremental is 1:32
+                         // info!("chunk coord to index: {:?} {}",(x,y,z),i);
         ((x1 + y1 + z1) + (CHUNK_SIZE / 2) as isize) as usize
     }
-    pub fn get_faces(&self, c_x: isize, c_y: isize, c_z: isize, b_x: usize, b_y: usize, b_z: usize) -> [bool; 6] {
+    pub fn get_faces(
+        &self,
+        c_x: isize,
+        c_y: isize,
+        c_z: isize,
+        b_x: usize,
+        b_y: usize,
+        b_z: usize,
+    ) -> [bool; 6] {
         let (w_x, w_y, w_z) = Self::convert_to_world_coords(c_x, c_y, c_z, b_x, b_y, b_z);
         // info!("world xyz: {} {} {}",w_x,w_y,w_z);
         let top = {
@@ -156,18 +164,31 @@ impl ChunkGrid {
         mesh.set_indices(Some(Indices::U32(indices)));
         return mesh;
     }
-    pub fn generate_chunk_data(&self, chunk: &Chunk) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<u32>) {
+    pub fn generate_chunk_data(
+        &self,
+        chunk: &Chunk,
+    ) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<u32>) {
         let mut positions = Vec::with_capacity(32 * 32 * 32); //max
         let mut normals = Vec::with_capacity(32 * 32 * 32); //max
         let mut uvs = Vec::with_capacity(32 * 32 * 32); //max
         let mut indices = Vec::with_capacity(32 * 32 * 32);
-        info!("generating mesh with xyz: {} {} {}",chunk.x,chunk.y,chunk.z);
+        info!(
+            "generating mesh with xyz: {} {} {}",
+            chunk.x, chunk.y, chunk.z
+        );
         chunk.blocks.iter().enumerate().for_each(|(i, b)| {
             match b {
                 None => {}
                 Some(b) => {
                     let (block_x, block_y, block_z) = Chunk::index_to_coords(i);
-                    let faces: [bool; 6] = self.get_faces(chunk.x as isize, chunk.y as isize, chunk.z as isize, block_x, block_y, block_z);
+                    let faces: [bool; 6] = self.get_faces(
+                        chunk.x as isize,
+                        chunk.y as isize,
+                        chunk.z as isize,
+                        block_x,
+                        block_y,
+                        block_z,
+                    );
                     // info!("faces: {:?}",faces);
                     let uv = b.get_texture_uv();
 
@@ -176,7 +197,7 @@ impl ChunkGrid {
                         let position = [
                             position[0] + (x as isize + (32 * chunk.x as isize)) as f32,
                             position[1] + (y as isize + (32 * chunk.y as isize)) as f32,
-                            position[2] + (z as isize + (32 * chunk.z as isize)) as f32
+                            position[2] + (z as isize + (32 * chunk.z as isize)) as f32,
                         ];
                         if faces[index / 4] {
                             positions.push(position);
@@ -208,10 +229,10 @@ impl ChunkGrid {
         (
             (x % 32) as usize,
             (y % (32 * 32 * 32)) as usize,
-            (z % (32 * 32)) as usize
+            (z % (32 * 32)) as usize,
         )
     }
-    pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option< Chunk> {
+    pub fn get_chunk_from_coords(&self, x: isize, y: isize, z: isize) -> &Option<Chunk> {
         let index = Self::chunk_coords_to_index(x, y, z) as isize;
         if (0..(32 * 32 * 32)).contains(&index) {
             return &self.chunks[index as usize];
@@ -219,14 +240,25 @@ impl ChunkGrid {
         &None
     }
 
-    fn convert_to_world_coords(c_x: isize, c_y: isize, c_z: isize, b_x: usize, b_y: usize, b_z: usize) -> (isize, isize, isize) {
-        ((c_x * 32) + b_x as isize, (c_y * 32) + b_y as isize, (c_z * 32) + b_z as isize)
+    fn convert_to_world_coords(
+        c_x: isize,
+        c_y: isize,
+        c_z: isize,
+        b_x: usize,
+        b_y: usize,
+        b_z: usize,
+    ) -> (isize, isize, isize) {
+        (
+            (c_x * 32) + b_x as isize,
+            (c_y * 32) + b_y as isize,
+            (c_z * 32) + b_z as isize,
+        )
     }
     fn convert_to_block_coords(w_x: isize, w_y: isize, w_z: isize) -> (usize, usize, usize) {
         (
             if w_x < 0 { 32 + (w_x % 32) } else { w_x % 32 } as usize,
             if w_y < 0 { 32 + (w_y % 32) } else { w_y % 32 } as usize,
-            if w_z < 0 { 32 + (w_z % 32) } else { w_z % 32 } as usize
+            if w_z < 0 { 32 + (w_z % 32) } else { w_z % 32 } as usize,
         )
     }
     fn convert_to_chunk_coords(w_x: isize, w_y: isize, w_z: isize) -> (isize, isize, isize) {
@@ -278,7 +310,10 @@ impl Chunk {
         ]
     }
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> &Option<Block> {
-        if (0..32).contains(&(x as i32)) && (0..32).contains(&(y as i32)) && (0..32).contains(&(z as i32)) {
+        if (0..32).contains(&(x as i32))
+            && (0..32).contains(&(y as i32))
+            && (0..32).contains(&(z as i32))
+        {
             // not even allowed to go beyond u16 size
             &self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)]
         } else {
@@ -286,7 +321,10 @@ impl Chunk {
         }
     }
     pub fn is_block(&self, x: usize, y: usize, z: usize) -> bool {
-        if (0..32).contains(&(x as i32)) && (0..32).contains(&(y as i32)) && (0..32).contains(&(z as i32)) {
+        if (0..32).contains(&(x as i32))
+            && (0..32).contains(&(y as i32))
+            && (0..32).contains(&(z as i32))
+        {
             // not even allowed to go beyond u16 size
             self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)] != None
         } else {
@@ -306,7 +344,7 @@ impl Chunk {
         (x + y + z) as usize
     }
 
-    const EMPTY: Option< Chunk> = None;
+    const EMPTY: Option<Chunk> = None;
 }
 
 const INDICES: [u32; 36] = [
@@ -319,32 +357,32 @@ const INDICES: [u32; 36] = [
 ];
 
 const VERTICES: &[([f32; 3], [f32; 3]); 24] = &[
-// Top
+    // Top
     ([-0.5, -0.5, 0.5], [0., 0., 1.0]),
     ([0.5, -0.5, 0.5], [0., 0., 1.0]),
     ([0.5, 0.5, 0.5], [0., 0., 1.0]),
     ([-0.5, 0.5, 0.5], [0., 0., 1.0]),
-// Bottom
+    // Bottom
     ([-0.5, 0.5, -0.5], [0., 0., -1.0]),
     ([0.5, 0.5, -0.5], [0., 0., -1.0]),
     ([0.5, -0.5, -0.5], [0., 0., -1.0]),
     ([-0.5, -0.5, -0.5], [0., 0., -1.0]),
-// Right
+    // Right
     ([0.5, -0.5, -0.5], [1.0, 0., 0.]),
     ([0.5, 0.5, -0.5], [1.0, 0., 0.]),
     ([0.5, 0.5, 0.5], [1.0, 0., 0.]),
     ([0.5, -0.5, 0.5], [1.0, 0., 0.]),
-// Left
+    // Left
     ([-0.5, -0.5, 0.5], [-1.0, 0., 0.]),
     ([-0.5, 0.5, 0.5], [-1.0, 0., 0.]),
     ([-0.5, 0.5, -0.5], [-1.0, 0., 0.]),
     ([-0.5, -0.5, -0.5], [-1.0, 0., 0.]),
-// Front
+    // Front
     ([0.5, 0.5, -0.5], [0., 1.0, 0.]),
     ([-0.5, 0.5, -0.5], [0., 1.0, 0.]),
     ([-0.5, 0.5, 0.5], [0., 1.0, 0.]),
     ([0.5, 0.5, 0.5], [0., 1.0, 0.]),
-// Back
+    // Back
     ([0.5, -0.5, 0.5], [0., -1.0, 0.]),
     ([-0.5, -0.5, 0.5], [0., -1.0, 0.]),
     ([-0.5, -0.5, -0.5], [0., -1.0, 0.]),
@@ -372,7 +410,10 @@ mod tests {
             index2: u16,
             index3: u16,
         }
-        println!("Size struct with 3 fields: {} bits", size_of_val(&Block2::default()));
+        println!(
+            "Size struct with 3 fields: {} bits",
+            size_of_val(&Block2::default())
+        );
     }
 
     #[test]
@@ -392,15 +433,24 @@ mod tests {
 
         let x = [Some(42); SIZE];
         let y = Box::new(x);
-        println!("Size with optional box from array: {} bits", size_of_val(&y));
+        println!(
+            "Size with optional box from array: {} bits",
+            size_of_val(&y)
+        );
 
         let x = [&Some(42); SIZE];
         let y = Box::new(x);
-        println!("Size with referenced optional box from array: {} bits", size_of_val(&y));
+        println!(
+            "Size with referenced optional box from array: {} bits",
+            size_of_val(&y)
+        );
 
         let x = [Some(&42); SIZE];
         let y = Box::new(x);
-        println!("Size with optional box from array with reference: {} bits", size_of_val(&y));
+        println!(
+            "Size with optional box from array with reference: {} bits",
+            size_of_val(&y)
+        );
     }
 
     #[test]
@@ -431,7 +481,10 @@ mod tests {
                 x[i];
             }
         }
-        println!("Boxed slice elapsed: {}μs", time.elapsed().as_micros() / 100);
+        println!(
+            "Boxed slice elapsed: {}μs",
+            time.elapsed().as_micros() / 100
+        );
 
         let y = Box::new(x);
         let time = Instant::now();
@@ -440,7 +493,10 @@ mod tests {
                 x[i];
             }
         }
-        println!("Boxed array elapsed: {}μs", time.elapsed().as_micros() / 100);
+        println!(
+            "Boxed array elapsed: {}μs",
+            time.elapsed().as_micros() / 100
+        );
 
         let x = [Some(42); SIZE];
         let y = Box::new(x);
@@ -448,7 +504,10 @@ mod tests {
         for i in 0..SIZE {
             y[i];
         }
-        println!("Optional boxed array elapsed: {}μs", time.elapsed().as_micros());
+        println!(
+            "Optional boxed array elapsed: {}μs",
+            time.elapsed().as_micros()
+        );
 
         let x = [&Some(42); SIZE];
         let y = Box::new(x);
@@ -458,7 +517,10 @@ mod tests {
                 x[i];
             }
         }
-        println!("Optional reference boxed array elapsed: {}μs", time.elapsed().as_micros() / 100);
+        println!(
+            "Optional reference boxed array elapsed: {}μs",
+            time.elapsed().as_micros() / 100
+        );
 
         let x = [Some(&42); SIZE];
         let y = Box::new(x);
@@ -468,7 +530,10 @@ mod tests {
                 x[i];
             }
         }
-        println!("Optional boxed array with reference elapsed: {}μs", time.elapsed().as_micros() / 100);
+        println!(
+            "Optional boxed array with reference elapsed: {}μs",
+            time.elapsed().as_micros() / 100
+        );
     }
 
     #[test]

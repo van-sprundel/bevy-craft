@@ -2,10 +2,10 @@ use bevy::{
     prelude::*,
     tasks::{AsyncComputeTaskPool, Task},
 };
+use bevy_craft_new::debug::DebugPlugin;
 use futures_lite::future;
 use rand::Rng;
 use std::time::{Duration, Instant};
-use bevy_craft_new::debug::DebugPlugin;
 
 /// This example shows how to use the ECS and the [`AsyncComputeTaskPool`]
 /// to spawn, poll, and complete tasks across systems and system ticks.
@@ -78,7 +78,7 @@ fn spawn_tasks(mut commands: Commands, thread_pool: Res<AsyncComputeTaskPool>) {
 /// removes the task component from the entity.
 fn handle_tasks(
     mut commands: Commands,
-    mut meshes:ResMut<Assets<Mesh>>,
+    mut meshes: ResMut<Assets<Mesh>>,
     mut transform_tasks: Query<(Entity, &mut Task<Mesh>)>,
     box_mesh_handle: Res<BoxMeshHandle>,
     box_material_handle: Res<BoxMaterialHandle>,
@@ -115,8 +115,7 @@ fn setup_env(mut commands: Commands) {
 
     // camera
     commands.spawn_bundle(PerspectiveCameraBundle {
-        transform: Transform::from_xyz(4.,5.,6.)
-            .looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(4., 5., 6.).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 }

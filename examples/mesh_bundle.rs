@@ -7,9 +7,10 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands:Commands,
-         mut meshes:ResMut<Assets<Mesh>>,
-         mut materials:ResMut<Assets<StandardMaterial>>,
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     commands.spawn_bundle(MaterialMeshBundle {
         mesh: meshes.add(shape::Cube::new(1.).into()),
@@ -17,7 +18,6 @@ fn setup(mut commands:Commands,
         ..Default::default()
     });
     let mut cam = PerspectiveCameraBundle::new_3d();
-    cam.transform = Transform::from_xyz(4.,5.,6.).looking_at(Vec3::ZERO,Vec3::Y);
+    cam.transform = Transform::from_xyz(4., 5., 6.).looking_at(Vec3::ZERO, Vec3::Y);
     commands.spawn_bundle(cam);
-
 }
