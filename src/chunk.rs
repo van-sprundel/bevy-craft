@@ -67,7 +67,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(c.is_block(b_x, b_y, b_z))
+                !(c.is_block(&(b_x as u16), &(b_y as u16), &(b_z as u16)))
             } else {
                 true
             }
@@ -78,7 +78,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(c.is_block(b_x, b_y, b_z))
+                !(c.is_block(&(b_x as u16), &(b_y as u16), &(b_z as u16)))
             } else {
                 true
             }
@@ -89,7 +89,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(c.is_block(b_x, b_y, b_z))
+                !(c.is_block(&(b_x as u16), &(b_y as u16), &(b_z as u16)))
             } else {
                 true
             }
@@ -100,7 +100,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(c.is_block(b_x, b_y, b_z))
+                !(c.is_block(&(b_x as u16), &(b_y as u16), &(b_z as u16)))
             } else {
                 true
             }
@@ -111,7 +111,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(c.is_block(b_x, b_y, b_z))
+                !(c.is_block(&(b_x as u16), &(b_y as u16), &(b_z as u16)))
             } else {
                 true
             }
@@ -122,7 +122,7 @@ impl ChunkGrid {
             let (b_x, b_y, b_z) = Self::convert_to_block_coords(w_x, w_y, w_z);
             if let Some(c) = self.get_chunk_from_coords(c_x, c_y, c_z) {
                 // info!("block xyz: {} {} {}",b_x,b_y,b_z);
-                !(c.is_block(b_x, b_y, b_z))
+                !(c.is_block(&(b_x as u16), &(b_y as u16), &(b_z as u16)))
             } else {
                 true
             }
@@ -146,6 +146,7 @@ impl ChunkGrid {
                 }
             }
         }
+        info!("Positions size: {:?}",positions.len());
         mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
@@ -172,6 +173,46 @@ impl ChunkGrid {
         let mut normals = Vec::with_capacity(32 * 32 * 32); //max
         let mut uvs = Vec::with_capacity(32 * 32 * 32); //max
         let mut indices = Vec::with_capacity(32 * 32 * 32); //max
+        let vertices = &[
+            // Top
+            ([-0.5, -0.5, 0.5], [0., 0., 1.0]),
+            ([0.5, -0.5, 0.5], [0., 0., 1.0]),
+            ([0.5, 0.5, 0.5], [0., 0., 1.0]),
+            ([-0.5, 0.5, 0.5], [0., 0., 1.0]),
+            // Bottom
+            ([-0.5, 0.5, -0.5], [0., 0., -1.0]),
+            ([0.5, 0.5, -0.5], [0., 0., -1.0]),
+            ([0.5, -0.5, -0.5], [0., 0., -1.0]),
+            ([-0.5, -0.5, -0.5], [0., 0., -1.0]),
+            // Right
+            ([0.5, -0.5, -0.5], [1.0, 0., 0.]),
+            ([0.5, 0.5, -0.5], [1.0, 0., 0.]),
+            ([0.5, 0.5, 0.5], [1.0, 0., 0.]),
+            ([0.5, -0.5, 0.5], [1.0, 0., 0.]),
+            // Left
+            ([-0.5, -0.5, 0.5], [-1.0, 0., 0.]),
+            ([-0.5, 0.5, 0.5], [-1.0, 0., 0.]),
+            ([-0.5, 0.5, -0.5], [-1.0, 0., 0.]),
+            ([-0.5, -0.5, -0.5], [-1.0, 0., 0.]),
+            // Front
+            ([0.5, 0.5, -0.5], [0., 1.0, 0.]),
+            ([-0.5, 0.5, -0.5], [0., 1.0, 0.]),
+            ([-0.5, 0.5, 0.5], [0., 1.0, 0.]),
+            ([0.5, 0.5, 0.5], [0., 1.0, 0.]),
+            // Back
+            ([0.5, -0.5, 0.5], [0., -1.0, 0.]),
+            ([-0.5, -0.5, 0.5], [0., -1.0, 0.]),
+            ([-0.5, -0.5, -0.5], [0., -1.0, 0.]),
+            ([0.5, -0.5, -0.5], [0., -1.0, 0.]),
+        ];
+        let mut indices_table = [
+            0, 1, 2, 2, 3, 0, // top
+            4, 5, 6, 6, 7, 4, // bottom
+            8, 9, 10, 10, 11, 8, // right
+            12, 13, 14, 14, 15, 12, // left
+            16, 17, 18, 18, 19, 16, // front
+            20, 21, 22, 22, 23, 20, // back
+        ];
         info!(
             "generating mesh with xyz: {} {} {}",
             chunk.x, chunk.y, chunk.z
@@ -180,20 +221,20 @@ impl ChunkGrid {
             match b {
                 None => {}
                 Some(b) => {
-                    let (block_x, block_y, block_z) = Chunk::index_to_coords(i);
+                    let (block_x, block_y, block_z) = Chunk::index_to_coords(&i);
                     let faces: [bool; 6] = self.get_faces(
                         chunk.x as isize,
                         chunk.y as isize,
                         chunk.z as isize,
-                        block_x,
-                        block_y,
-                        block_z,
+                        block_x as usize,
+                        block_y as usize,
+                        block_z as usize,
                     );
                     // info!("faces: {:?}",faces);
                     let uv = b.get_texture_uv();
 
-                    for (index, (position, normal)) in VERTICES.iter().enumerate() {
-                        let (x, y, z) = Chunk::index_to_coords(i);
+                    for (index, (position, normal)) in vertices.iter().enumerate() {
+                        let (x, y, z) = Chunk::index_to_coords(&i);
                         let position = [
                             position[0] + (x as isize + (32 * chunk.x as isize)) as f32,
                             position[1] + (y as isize + (32 * chunk.y as isize)) as f32,
@@ -211,10 +252,11 @@ impl ChunkGrid {
                     }
                     for x in 0..6 {
                         if faces[x] {
-                            let temp = &mut INDICES[x * 6..(x * 6) + 6];
-                            for u in temp.iter_mut() {
+                            let mut temp = &mut indices_table.clone()[x * 6..(x * 6) + 6];
+                            temp.iter_mut().for_each(|mut u| {
                                 *u += (i * 24) as u32;
-                            }
+                            });
+
                             indices.extend_from_slice(temp);
                         } else {
                             indices.extend_from_slice(&[0, 0, 0, 0, 0, 0]);
@@ -306,14 +348,14 @@ impl Chunk {
         self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)] = Some(block);
     }
     pub fn get_faces(&self, block_index: usize) -> [bool; 6] {
-        let (x, y, z) = Self::index_to_coords(block_index);
+        let (x, y, z) = Self::index_to_coords(&block_index);
         [
-            self.is_block(x, y, z.wrapping_add(1)), // top
-            self.is_block(x, y, z.wrapping_sub(1)), // bottom
-            self.is_block(x.wrapping_add(1), y, z), // right
-            self.is_block(x.wrapping_sub(1), y, z), // left
-            self.is_block(x, y.wrapping_add(1), z), // front
-            self.is_block(x, y.wrapping_sub(1), z), // back
+            self.is_block(&x, &y, &z.wrapping_add(1)), // top
+            self.is_block(&x, &y, &z.wrapping_sub(1)), // bottom
+            self.is_block(&x.wrapping_add(1), &y, &z), // right
+            self.is_block(&x.wrapping_sub(1), &y, &z), // left
+            self.is_block(&x, &y.wrapping_add(1), &z), // front
+            self.is_block(&x, &y.wrapping_sub(1), &z), // back
         ]
     }
     pub fn get_block(&self, x: usize, y: usize, z: usize) -> &Option<Block> {
@@ -327,22 +369,22 @@ impl Chunk {
             &None
         }
     }
-    pub fn is_block(&self, x: usize, y: usize, z: usize) -> bool {
-        if (0..32).contains(&(x as i32))
-            && (0..32).contains(&(y as i32))
-            && (0..32).contains(&(z as i32))
+    pub fn is_block(&self, x: &u16, y: &u16, z: &u16) -> bool {
+        if (0..32).contains(&(*x as i32))
+            && (0..32).contains(&(*y as i32))
+            && (0..32).contains(&(*z as i32))
         {
             // not even allowed to go beyond u16 size
-            self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)].is_some()
+            self.blocks[Self::coords_to_index(*x as u16,* y as u16,* z as u16)].is_some()
         } else {
             false
         }
     }
-    pub fn index_to_coords(index: usize) -> (usize, usize, usize) {
+    pub fn index_to_coords(index: &usize) -> (u16, u16, u16) {
         let x = index % 32; // 0..32 then resets to 0
         let y = index / (32 * 32); // 0..1 is equal to a 32 * 32 block area
         let z = (index / 32) % 32; // 0..1 is equal to a 32 block area
-        (x, y, z)
+        (x as u16, y as u16, z as u16)
     }
     pub fn coords_to_index(x: u16, y: u16, z: u16) -> usize {
         let x = x; // incremental is the same
@@ -353,48 +395,6 @@ impl Chunk {
 
     const EMPTY: Option<Chunk> = None;
 }
-
-pub const INDICES: [u32; 36] = [
-    0, 1, 2, 2, 3, 0, // top
-    4, 5, 6, 6, 7, 4, // bottom
-    8, 9, 10, 10, 11, 8, // right
-    12, 13, 14, 14, 15, 12, // left
-    16, 17, 18, 18, 19, 16, // front
-    20, 21, 22, 22, 23, 20, // back
-];
-
-pub const VERTICES: &[([f32; 3], [f32; 3]); 24] = &[
-    // Top
-    ([-0.5, -0.5, 0.5], [0., 0., 1.0]),
-    ([0.5, -0.5, 0.5], [0., 0., 1.0]),
-    ([0.5, 0.5, 0.5], [0., 0., 1.0]),
-    ([-0.5, 0.5, 0.5], [0., 0., 1.0]),
-    // Bottom
-    ([-0.5, 0.5, -0.5], [0., 0., -1.0]),
-    ([0.5, 0.5, -0.5], [0., 0., -1.0]),
-    ([0.5, -0.5, -0.5], [0., 0., -1.0]),
-    ([-0.5, -0.5, -0.5], [0., 0., -1.0]),
-    // Right
-    ([0.5, -0.5, -0.5], [1.0, 0., 0.]),
-    ([0.5, 0.5, -0.5], [1.0, 0., 0.]),
-    ([0.5, 0.5, 0.5], [1.0, 0., 0.]),
-    ([0.5, -0.5, 0.5], [1.0, 0., 0.]),
-    // Left
-    ([-0.5, -0.5, 0.5], [-1.0, 0., 0.]),
-    ([-0.5, 0.5, 0.5], [-1.0, 0., 0.]),
-    ([-0.5, 0.5, -0.5], [-1.0, 0., 0.]),
-    ([-0.5, -0.5, -0.5], [-1.0, 0., 0.]),
-    // Front
-    ([0.5, 0.5, -0.5], [0., 1.0, 0.]),
-    ([-0.5, 0.5, -0.5], [0., 1.0, 0.]),
-    ([-0.5, 0.5, 0.5], [0., 1.0, 0.]),
-    ([0.5, 0.5, 0.5], [0., 1.0, 0.]),
-    // Back
-    ([0.5, -0.5, 0.5], [0., -1.0, 0.]),
-    ([-0.5, -0.5, 0.5], [0., -1.0, 0.]),
-    ([-0.5, -0.5, -0.5], [0., -1.0, 0.]),
-    ([0.5, -0.5, -0.5], [0., -1.0, 0.]),
-];
 
 #[cfg(test)]
 mod tests {
@@ -531,11 +531,11 @@ mod tests {
         assert_eq!(1024, Chunk::coords_to_index(0, 1, 0));
         assert_eq!(1025, Chunk::coords_to_index(1, 1, 0));
 
-        assert_eq!((0, 0, 0), Chunk::index_to_coords(0));
-        assert_eq!((1, 0, 0), Chunk::index_to_coords(1));
-        assert_eq!((0, 0, 1), Chunk::index_to_coords(32));
-        assert_eq!((0, 1, 0), Chunk::index_to_coords(1024));
-        assert_eq!((1, 1, 0), Chunk::index_to_coords(1025));
+        assert_eq!((0, 0, 0), Chunk::index_to_coords(&0));
+        assert_eq!((1, 0, 0), Chunk::index_to_coords(&1));
+        assert_eq!((0, 0, 1), Chunk::index_to_coords(&32));
+        assert_eq!((0, 1, 0), Chunk::index_to_coords(&1024));
+        assert_eq!((1, 1, 0), Chunk::index_to_coords(&1025));
 
         let mut c = Chunk::new(0, 0, 0);
 
@@ -543,7 +543,7 @@ mod tests {
         assert_ne!(None, *c.get_block(1, 2, 3));
         assert_eq!(Some(Block(0)), *c.get_block(1, 2, 3));
         assert_eq!(2145, Chunk::coords_to_index(1, 2, 3));
-        assert_eq!((1, 2, 3), Chunk::index_to_coords(2145));
+        assert_eq!((1, 2, 3), Chunk::index_to_coords(&2145));
 
         let mut c = Chunk::new(0, 0, 0);
 
@@ -551,7 +551,7 @@ mod tests {
         assert_ne!(None, *c.get_block(31, 30, 29));
         assert_eq!(Some(Block(0)), *c.get_block(31, 30, 29));
         assert_eq!(31679, Chunk::coords_to_index(31, 30, 29));
-        assert_eq!((31, 30, 29), Chunk::index_to_coords(31679));
+        assert_eq!((31, 30, 29), Chunk::index_to_coords(&31679));
     }
 
     #[test]

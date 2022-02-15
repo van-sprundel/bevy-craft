@@ -89,8 +89,8 @@ fn switch_menu(keyboard_input: Res<Input<KeyCode>>, mut state: ResMut<State<Game
 }
 
 fn temp_chunk_spawn() {
-    for a in 0..4 {
-        for c in 0..4 {
+    for a in 0..8 {
+        for c in 0..8 {
             for b in 0..4 {
                 let mut chunk = Chunk::new(a, b, c);
                 for x in 0..32 {
@@ -151,12 +151,12 @@ fn spawn_chunks(
             material.base_color_texture = Some(texture.clone());
             material.unlit = true;
 
-            let mesh = CHUNK_GRID.lock().generate_chunk_mesh(chunk);
-            commands.spawn_bundle(MaterialMeshBundle {
-                mesh: meshes.add(mesh),
-                material: materials.add(material),
-                ..Default::default()
-            });
+            // let mesh = CHUNK_GRID.lock().generate_chunk_mesh(chunk);
+            // commands.spawn_bundle(MaterialMeshBundle {
+            //     mesh: meshes.add(mesh),
+            //     material: materials.add(material),
+            //     ..Default::default()
+            // });
 
             info!("Done spawning chunk!");
             // }
