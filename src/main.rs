@@ -8,8 +8,9 @@ use bevy::prelude::*;
 use bevy::reflect::List;
 use bevy::render::options::WgpuOptions;
 use bevy::render::primitives::Plane;
+use bevy::render::render_phase::Draw;
 use bevy::render::render_resource::WgpuFeatures;
-use bevy::tasks::AsyncComputeTaskPool;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
 use futures_lite::future;
 use lazy_static::lazy_static;
 use spin::mutex::Mutex;
@@ -26,6 +27,7 @@ lazy_static! {
 }
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::hex("85ABFF").unwrap()))
         .insert_resource(Msaa { samples: 4 })
         .insert_resource(WgpuOptions {
             features: WgpuFeatures::POLYGON_MODE_LINE,
@@ -33,6 +35,7 @@ fn main() {
         })
         .insert_resource(WindowDescriptor {
             vsync: true,
+            title:"Bevy craft".to_owned(),
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -86,9 +89,9 @@ fn switch_menu(keyboard_input: Res<Input<KeyCode>>, mut state: ResMut<State<Game
 }
 
 fn temp_chunk_spawn() {
-    for a in 0..2 {
-        for c in 0..2 {
-            for b in 0..2 {
+    for a in 0..4 {
+        for c in 0..4 {
+            for b in 0..4 {
                 let mut chunk = Chunk::new(a, b, c);
                 for x in 0..32 {
                     for y in 0..32 {
@@ -121,7 +124,7 @@ fn queue_chunks(thread_pool: Res<AsyncComputeTaskPool>) {
                 // let task = thread_pool.spawn(async move {
                 //    c
                 // });
-                CHUNK_GRID.lock().add_to_queue(c);
+                CHUNK_GRID.lock().add_to_queue(c.clone());
                 c.spawned = true;
                 CHUNK_GRID.lock().chunks[i] = Some(c.clone());
             }
@@ -137,10 +140,10 @@ fn spawn_chunks(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    wireframe_config.global = true;
+    // wireframe_config.global = true;
     let mut queued_chunks = CHUNK_GRID.lock().queued_chunks.to_vec();
-    queued_chunks.iter_mut().for_each(|mut task| {
-        if !task.spawned {
+    queued_chunks.iter_mut().for_each(|chunk| {
+        if !chunk.spawned {
             // if let Some(c) = future::block_on(future::poll_once(task)) {
             let texture = assets.load("TEXTURE_UV_MAP.png");
             let mut material = StandardMaterial::default();
@@ -148,7 +151,7 @@ fn spawn_chunks(
             material.base_color_texture = Some(texture.clone());
             material.unlit = true;
 
-            let mesh = CHUNK_GRID.lock().generate_chunk_mesh(task);
+            let mesh = CHUNK_GRID.lock().generate_chunk_mesh(chunk);
             commands.spawn_bundle(MaterialMeshBundle {
                 mesh: meshes.add(mesh),
                 material: materials.add(material),
@@ -157,7 +160,7 @@ fn spawn_chunks(
 
             info!("Done spawning chunk!");
             // }
-            task.spawned = true;
+            chunk.spawned = true;
         }
     });
     CHUNK_GRID.lock().queued_chunks = queued_chunks;
@@ -228,4 +231,25 @@ fn rotate_camera(
         .clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);
 
     transform.rotation = Quat::from_rotation_y(cam.yaw) * Quat::from_rotation_x(cam.pitch);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::size_of_val;
+    use std::time::Instant;
+
+    #[test]
+    fn startup_speed() {
+        // let time = Instant::now();
+        // App::new()
+        //     .add_plugins(MinimalPlugins).run();
+        // println!("First run elapsed: {}", time.elapsed().as_micros());
+        // let iters = 100;
+        // for _ in 0..iters {
+        //     App::new()
+        //         .add_plugins(MinimalPlugins).run();
+        // }
+        // println!("First run elapsed: {}", time.elapsed().as_micros() / iters);
+    }
 }

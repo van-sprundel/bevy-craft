@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use crate::block::Block;
 
-const CHUNK_SIZE: usize = 32 * 32 * 32;
+pub const CHUNK_SIZE: usize = 32 * 32 * 32;
 
 // pub struct ChunkGrid(pub Box<[Option<Chunk>; CHUNK_SIZE]>);
 pub struct ChunkGrid {
@@ -31,8 +31,8 @@ impl ChunkGrid {
         info!("setting chunk at xyz: {}{}{} i: {}", x, y, z, index);
         self.chunks[index] = Some(chunk);
     }
-    pub fn add_to_queue(&mut self, task: &Chunk) {
-        self.queued_chunks.push(task.clone());
+    pub fn add_to_queue(&mut self, chunk: Chunk) {
+        self.queued_chunks.push(chunk);
     }
     pub fn chunk_index_to_coords(index: usize) -> (usize, usize, usize) {
         let index = index - (CHUNK_SIZE / 2);
@@ -131,10 +131,10 @@ impl ChunkGrid {
     }
     pub fn generate_mesh(&self) -> Mesh {
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        let mut positions = Vec::with_capacity(32 * 32 * 32 * 32); //max
-        let mut normals = Vec::with_capacity(32 * 32 * 32 * 32); //max
-        let mut uvs = Vec::with_capacity(32 * 32 * 32 * 32); //max
-        let mut indices = Vec::with_capacity(32 * 32 * 32 * 32);
+        let mut positions = Vec::with_capacity(32 * 32 * 32); //max
+        let mut normals = Vec::with_capacity(32 * 32 * 32); //max
+        let mut uvs = Vec::with_capacity(32 * 32 * 32); //max
+        let mut indices = Vec::with_capacity(32 * 32 * 32); //max
         for c in self.chunks.iter() {
             if let Some(c) = c {
                 if !c.spawned {
@@ -168,10 +168,10 @@ impl ChunkGrid {
         &self,
         chunk: &Chunk,
     ) -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<u32>) {
-        let mut positions = Vec::with_capacity(32 * 32 * 32); //max
+        let mut positions =Vec::with_capacity(32 * 32 * 32); //max
         let mut normals = Vec::with_capacity(32 * 32 * 32); //max
         let mut uvs = Vec::with_capacity(32 * 32 * 32); //max
-        let mut indices = Vec::with_capacity(32 * 32 * 32);
+        let mut indices = Vec::with_capacity(32 * 32 * 32); //max
         info!(
             "generating mesh with xyz: {} {} {}",
             chunk.x, chunk.y, chunk.z
@@ -286,6 +286,13 @@ pub struct Chunk {
 }
 
 impl Chunk {
+    pub fn full(x: i16, y: i16, z: i16) -> Self {
+      Chunk {
+          blocks: Box::new([Block::STONE; 32 * 32 * 32]),
+          spawned: false,
+          x,y,z
+      }
+    }
     pub fn new(x: i16, y: i16, z: i16) -> Self {
         Self {
             blocks: Box::new([Block::EMPTY; 32 * 32 * 32]),
@@ -326,7 +333,7 @@ impl Chunk {
             && (0..32).contains(&(z as i32))
         {
             // not even allowed to go beyond u16 size
-            self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)] != None
+            self.blocks[Self::coords_to_index(x as u16, y as u16, z as u16)].is_some()
         } else {
             false
         }
@@ -347,7 +354,7 @@ impl Chunk {
     const EMPTY: Option<Chunk> = None;
 }
 
-const INDICES: [u32; 36] = [
+pub const INDICES: [u32; 36] = [
     0, 1, 2, 2, 3, 0, // top
     4, 5, 6, 6, 7, 4, // bottom
     8, 9, 10, 10, 11, 8, // right
@@ -356,7 +363,7 @@ const INDICES: [u32; 36] = [
     20, 21, 22, 22, 23, 20, // back
 ];
 
-const VERTICES: &[([f32; 3], [f32; 3]); 24] = &[
+pub const VERTICES: &[([f32; 3], [f32; 3]); 24] = &[
     // Top
     ([-0.5, -0.5, 0.5], [0., 0., 1.0]),
     ([0.5, -0.5, 0.5], [0., 0., 1.0]),
@@ -395,26 +402,6 @@ mod tests {
     use std::time::Instant;
 
     use super::*;
-
-    #[test]
-    fn block_size() {
-        struct Block;
-        println!("Size struct: {} bits", size_of_val(&Block {}));
-
-        struct Block1(u16);
-        println!("Size struct with u16: {} bits", size_of_val(&Block1(42)));
-
-        #[derive(Default)]
-        struct Block2 {
-            index1: u16,
-            index2: u16,
-            index3: u16,
-        }
-        println!(
-            "Size struct with 3 fields: {} bits",
-            size_of_val(&Block2::default())
-        );
-    }
 
     #[test]
     fn chunk_size() {
@@ -569,12 +556,6 @@ mod tests {
 
     #[test]
     fn chunkgrid_calculations() {
-        // assert_eq!(0, ChunkGrid::coords_to_index(0, 0, 0));
-        // assert_eq!(1, ChunkGrid::coords_to_index(1, 0, 0));
-        // assert_eq!(32, ChunkGrid::coords_to_index(0, 0, 1));
-        // assert_eq!(1024, ChunkGrid::coords_to_index(0, 1, 0));
-        // assert_eq!(1025, ChunkGrid::coords_to_index(1, 1, 0));
-
         assert_eq!((0, 0, 0), ChunkGrid::chunk_index_to_coords(0));
         assert_eq!((32, 0, 0), ChunkGrid::chunk_index_to_coords(1));
         assert_eq!((0, 0, 32), ChunkGrid::chunk_index_to_coords(32));

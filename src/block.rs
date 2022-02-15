@@ -17,6 +17,7 @@ pub enum Texture {
 
 impl Block {
     pub(crate) const EMPTY: Option<Block> = None;
+    pub(crate) const STONE: Option<Block> = Some(Block(1));
     pub fn new(texture: Texture) -> Self {
         // 64 textures | 6 bits
         match texture {
@@ -121,5 +122,32 @@ impl Block {
             [uv[5][0][1] / 16., uv[5][1][1] / 16.],
             [uv[5][0][0] / 16., uv[5][1][1] / 16.],
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::size_of_val;
+    use std::time::Instant;
+
+    #[test]
+    fn block_size() {
+        struct Block;
+        println!("Size struct: {} bits", size_of_val(&Block {}));
+
+        struct Block1(u16);
+        println!("Size struct with u16: {} bits", size_of_val(&Block1(42)));
+
+        #[derive(Default)]
+        struct Block2 {
+            index1: u16,
+            index2: u16,
+            index3: u16,
+        }
+        println!(
+            "Size struct with 3 fields: {} bits",
+            size_of_val(&Block2::default())
+        );
     }
 }
